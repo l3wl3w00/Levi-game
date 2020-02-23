@@ -37,7 +37,7 @@ font = pygame.font.SysFont('arial', 30, True)
 #class player
 #########################################################################################################################################################################
 class player():
-    def __init__(self, x, y, r, hp, vel = 2,  isEnemy = True):
+    def __init__(self, x, y, r, maxhp, vel = 2,  isEnemy = True):
         self.x = x
         self.y = y
         self.r = r
@@ -47,7 +47,8 @@ class player():
         self.up = False
         self.down = False
         self.lastMove = "up"
-        self.hp = hp
+        self.maxhp = maxhp
+        self.hp = maxhp
         self.alive = True
         self.isEnemy = isEnemy
         self.collisionDirection = ""
@@ -141,7 +142,10 @@ class player():
                 win.blit(animationList[6],(self.x,self.y))
     
     def drawHpBar(self):
-        pygame.draw.rect(win,(0,255,0),(self.hitbox[0] - self.hitboxr, self.hitbox[1] - (self.hitboxr+30),100,20))
+        hppercent = self.hp/self.maxhp
+        pygame.draw.rect(win,(255,0,0),(self.hitbox[0] - self.hitboxr, self.hitbox[1] - (self.hitboxr+30),100,20))
+        pygame.draw.rect(win,(0,255,0),(self.hitbox[0] - self.hitboxr, self.hitbox[1] - (self.hitboxr+30),int(hppercent*100),20))
+        pygame.draw.rect(win,(0,0,0),(self.hitbox[0] - self.hitboxr, self.hitbox[1] - (self.hitboxr+30),100,20),2)
     
     def moveUp(self):
         if self.y  > 0:
@@ -171,10 +175,10 @@ class player():
             self.right = True
         self.hitbox = (self.x+self.r + 3, self.y + self.r+3)
     
-    def shoot(self,listToAppendTo, radius,dmg):
+    def shoot(self,listToAppendTo, radius,dmg, color = (255,0,0) ):
         """listToAppendTo, radius, dmg"""
         if len(listToAppendTo) < 100:
-            listToAppendTo.append(projectile(round(self.x + self.r),round(self.y + self.r),radius,(255,0,0),self.lastMove,dmg,self))
+            listToAppendTo.append(projectile(round(self.x + self.r),round(self.y + self.r),radius,color,self.lastMove,dmg,self))
     
     def die(self, listToRemoveFrom):
         listToRemoveFrom.pop(listToRemoveFrom.index(self))
@@ -345,8 +349,8 @@ def isInObj(randomx,randomy,whereNotToSpawn):
 # game init
 #########################################################################################################################################################################
 run = True
-char = player(300,300,50,hp = 10,vel = 8,isEnemy = False)
-enemy = player(50,50,40,hp = 100,vel = 2)
+char = player(300,300,50,maxhp = 10,vel = 8,isEnemy = False)
+enemy = player(50,50,40,maxhp = 100,vel = 2)
 enemies = []
 bullets = []
 enemies.append(enemy)
@@ -392,7 +396,6 @@ while run:
                 if bullet.collide(char) and enemycount == 0:
                     bullets.pop(bullets.index(bullet))
                     char.loseHp(bullet.dmg)
-                    print(char.hp)
 
     ###   mozgások   #################################################################################################
     if keyPressed(pygame.K_LEFT) and not char.collideWith(enemy):
@@ -434,8 +437,7 @@ while run:
         enemy.moveTowardsTarget(char)
         shootcd += 1
         if shootcd%(fps*2) == 0:
-            print("shoot")
-            enemy.shoot(bullets,5,1)
+            enemy.shoot(bullets,5,1, (0,0,0))
         if enemy.collideWith(char):
             enemy.bounceBack(30,enemy.lastMove)
             if char.lastMove == "left" and enemy.lastMove == "right":
@@ -455,7 +457,6 @@ while run:
             if char.lastMove == "upleft" and enemy.lastMove == "downright":
                 char.bounceBack(20,"upleft")
             char.loseHp(1)
-            print("hp: ",char.hp)
     for enemy in enemies:
         if enemy.hp < 1:
             enemy.die(enemies)
