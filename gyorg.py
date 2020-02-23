@@ -452,7 +452,7 @@ while run:
         respawn(enemy,enemies,10,0)
     if char.hp < 1:
         del char
-        print("Meghaltál")
+        print("Meghaltál!")
         break
     redrawGameWindow()
 
