@@ -173,8 +173,8 @@ class player():
     
     def shoot(self,listToAppendTo, radius,dmg):
         """listToAppendTo, radius, dmg"""
-        if len(listToAppendTo) < 10000:
-            listToAppendTo.append(projectile(round(self.x + self.r),round(self.y + self.r),radius,(255,0,0),self.lastMove,dmg))
+        if len(listToAppendTo) < 100:
+            listToAppendTo.append(projectile(round(self.x + self.r),round(self.y + self.r),radius,(255,0,0),self.lastMove,dmg,self))
     
     def die(self, listToRemoveFrom):
         listToRemoveFrom.pop(listToRemoveFrom.index(self))
@@ -198,7 +198,7 @@ class player():
             if target.y > self.y and self.y + self.vel <= target.y:
                 self.moveDown()
             if target.y < self.y and self.y + self.vel >= target.y:
-                self.moveUp()      
+                self.moveUp()     
     
     def bounceBack(self,value, lastMove):
         if lastMove == "left":
@@ -230,7 +230,7 @@ class player():
 #class projectile
 #########################################################################################################################################################################
 class projectile():
-    def __init__(self,x,y,r,color,facing, dmg):
+    def __init__(self,x,y,r,color,facing, dmg, shooter):
         self.x = x
         self.y = y
         self.r = r
@@ -238,7 +238,8 @@ class projectile():
         self.vel = 15
         self.facing = facing
         self.dmg = dmg
-
+        self.shooter = shooter
+    
     def draw(self,win):
         pygame.draw.circle(win, self.color, (self.x, self.y), self.r)
 
@@ -324,7 +325,6 @@ def redrawGameWindow():
     for enemy in enemies:
         enemy.draw(win, red)
         enemy.drawHpBar()
-        enemy.drawHitbox()
     char.drawHpBar()
     pygame.display.update()
 
@@ -345,20 +345,22 @@ def isInObj(randomx,randomy,whereNotToSpawn):
 # game init
 #########################################################################################################################################################################
 run = True
-char = player(300,300,50,hp = 100,vel = 8,isEnemy = False)
-enemy = player(50,50,40,hp = 100,vel = 0)
+char = player(300,300,50,hp = 10,vel = 8,isEnemy = False)
+enemy = player(50,50,40,hp = 100,vel = 2)
 enemies = []
 bullets = []
 enemies.append(enemy)
 enemycount = 0
 bulletcount = 0
+shootcd = 0
+fps = 40
 
 #########################################################################################################################################################################
 # main loop
 #########################################################################################################################################################################
 while run:
     
-    clock.tick(40)
+    clock.tick(fps)
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             run = False
@@ -381,10 +383,16 @@ while run:
         bullet.move(bullets)
         enemycount = 0
         for enemy in enemies:
-            if bullet.collide(enemy) and enemycount == 0:
-                bullets.pop(bullets.index(bullet))
-                enemy.loseHp(bullet.dmg)
-                enemycount += 1
+            if bullet.shooter == char:
+                if bullet.collide(enemy) and enemycount == 0:
+                    bullets.pop(bullets.index(bullet))
+                    enemy.loseHp(bullet.dmg)
+                    enemycount += 1
+            elif bullet.shooter == enemy:
+                if bullet.collide(char) and enemycount == 0:
+                    bullets.pop(bullets.index(bullet))
+                    char.loseHp(bullet.dmg)
+                    print(char.hp)
 
     ###   mozgások   #################################################################################################
     if keyPressed(pygame.K_LEFT) and not char.collideWith(enemy):
@@ -424,6 +432,10 @@ while run:
 
     for enemy in enemies:
         enemy.moveTowardsTarget(char)
+        shootcd += 1
+        if shootcd%(fps*2) == 0:
+            print("shoot")
+            enemy.shoot(bullets,5,1)
         if enemy.collideWith(char):
             enemy.bounceBack(30,enemy.lastMove)
             if char.lastMove == "left" and enemy.lastMove == "right":
@@ -449,7 +461,7 @@ while run:
             enemy.die(enemies)
             score += 1
     if len(enemies) < 1:
-        respawn(enemy,enemies,10,0)
+        respawn(enemy,enemies,10,2)
     if char.hp < 1:
         del char
         print("Meghaltál!")
