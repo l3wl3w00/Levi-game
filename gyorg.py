@@ -27,17 +27,23 @@ balle = pygame.image.load("bal_le.png")
 hatter = pygame.image.load('hatter2.png')
 green = [walkLeft,walkRight,walkUp,walkDown,jobbfel,jobble,balfel,balle]
 red = [pygame.image.load('badguy_left.png'),pygame.image.load('badguy_right.png'),\
-    pygame.image.load('badguy_up.png'),pygame.image.load('badguy_down.png'),pygame.image.load('badguy_upright.png'),pygame.image.load('badguy_downright.png'),pygame.image.load('badguy_upleft.png'),pygame.image.load('badguy_downleft.png')]
+    pygame.image.load('badguy_up.png'),pygame.image.load('badguy_down.png'),\
+    pygame.image.load('badguy_upright.png'),pygame.image.load('badguy_downright.png'),\
+    pygame.image.load('badguy_upleft.png'),pygame.image.load('badguy_downleft.png')]
+blue = [pygame.image.load('blue_left.png'),pygame.image.load('blue_right.png'),\
+    pygame.image.load('blue_up.png'),pygame.image.load('blue_down.png'),\
+    pygame.image.load('blue_upright.png'),pygame.image.load('blue_downright.png'),\
+    pygame.image.load('blue_upleft.png'),pygame.image.load('blue_downleft.png')]
 clock = pygame.time.Clock()
-score = 0
 font = pygame.font.SysFont('arial', 30, True)
-
-
+stunfont = pygame.font.SysFont('arial', 12)
+heal = pygame.image.load('heal.png')
 #########################################################################################################################################################################
 #class player
 #########################################################################################################################################################################
 class player():
-    def __init__(self, x, y, r, maxhp, vel = 2,  isEnemy = True):
+    """self, x, y, r, maxhp, Type,vel = 2 """
+    def __init__(self, x, y, r, maxhp, Type,vel = 2 ):
         self.x = x
         self.y = y
         self.r = r
@@ -49,47 +55,50 @@ class player():
         self.lastMove = "up"
         self.maxhp = maxhp
         self.hp = maxhp
-        self.alive = True
-        self.isEnemy = isEnemy
+        self.Type = Type
         self.collisionDirection = ""
-        self.hitbox = (self.x+self.r + 3, self.y + self.r+3)
-        self.hitboxr = self.r+3
+        self.hitbox = (self.x+self.r + 4, self.y + self.r+5)
+        self.hitboxr = self.r
+        self.isStunned = False
 
     def drawHitbox(self):
+        if self.Type == red:
+            self.hitbox = (self.x+self.r , self.y + self.r)
+            self.hitboxr = self.r
         pygame.draw.circle(win,(255,0,0),(self.hitbox[0], self.hitbox[1]), self.hitboxr, 2)
 
-    def draw(self,win,animationList):
+    def draw(self,win):
         ########## balra mozog ###########################################
         if self.left and not self.up and not self.down:
             self.up = False
             self.down = False
-            win.blit(animationList[0],(self.x,self.y))
+            win.blit(self.Type[0],(self.x,self.y))
             self.lastMove = "left"
 
         ########## jobbra mozog ###########################################
         elif self.right and not self.up and not self.down:
             self.up = False
             self.down = False
-            win.blit(animationList[1],(self.x,self.y))
+            win.blit(self.Type[1],(self.x,self.y))
             self.lastMove = "right"
 
         ########## fel mozog ###########################################
         elif self.up and not self.left and not self.right:
             self.left = False
             self.right = False
-            win.blit(animationList[2],(self.x,self.y))
+            win.blit(self.Type[2],(self.x,self.y))
             self.lastMove = "up"
 
         ########## le mozog ###########################################
         elif self.down and not self.left and not self.right:
             self.left = False
             self.right = False
-            win.blit(animationList[3],(self.x,self.y))
+            win.blit(self.Type[3],(self.x,self.y))
             self.lastMove = "down"
 
         ########## jobb fel mozog ###########################################
         elif self.up and self.right:
-            win.blit(animationList[4],(self.x,self.y))
+            win.blit(self.Type[4],(self.x,self.y))
             self.lastMove = "upright"
             if not keyPressed(pygame.K_UP):
                 self.up = False
@@ -99,7 +108,7 @@ class player():
         ########## jobb le mozog ###########################################
         elif self.down and self.right:
             self.lastMove = "downright"
-            win.blit(animationList[5],(self.x,self.y))
+            win.blit(self.Type[5],(self.x,self.y))
             if not keyPressed(pygame.K_DOWN):
                 self.down = False
             if not keyPressed(pygame.K_RIGHT):
@@ -108,7 +117,7 @@ class player():
         ########## bal fel mozog ###########################################
         elif self.up and self.left:
             self.lastMove = "upleft"
-            win.blit(animationList[6],(self.x,self.y))
+            win.blit(self.Type[6],(self.x,self.y))
             if not keyPressed(pygame.K_UP):
                 self.up = False
             if not keyPressed(pygame.K_LEFT):
@@ -117,7 +126,7 @@ class player():
         ########## bal le mozog ###########################################
         elif self.down and self.left:
             self.lastMove = "downleft"
-            win.blit(animationList[7],(self.x,self.y))
+            win.blit(self.Type[7],(self.x,self.y))
             if not keyPressed(pygame.K_LEFT):
                 self.left = False
             if not keyPressed(pygame.K_DOWN):
@@ -125,28 +134,39 @@ class player():
         ########## áll ###########################################
         else:
             if self.lastMove == "left":
-                win.blit(animationList[0],(self.x,self.y))
+                win.blit(self.Type[0],(self.x,self.y))
             elif self.lastMove == "right":
-                win.blit(animationList[1],(self.x,self.y))
+                win.blit(self.Type[1],(self.x,self.y))
             elif self.lastMove == "up":
-                win.blit(animationList[2],(self.x,self.y))
+                win.blit(self.Type[2],(self.x,self.y))
             elif self.lastMove == "down":
-                win.blit(animationList[3],(self.x,self.y))
+                win.blit(self.Type[3],(self.x,self.y))
             elif self.lastMove == "downleft":
-                win.blit(animationList[7],(self.x,self.y))
+                win.blit(self.Type[7],(self.x,self.y))
             elif self.lastMove == "downright":
-                win.blit(animationList[5],(self.x,self.y))
+                win.blit(self.Type[5],(self.x,self.y))
             elif self.lastMove == "upright":
-                win.blit(animationList[4],(self.x,self.y))
+                win.blit(self.Type[4],(self.x,self.y))
             elif self.lastMove == "upleft":
-                win.blit(animationList[6],(self.x,self.y))
+                win.blit(self.Type[6],(self.x,self.y))
     
     def drawHpBar(self):
         hppercent = self.hp/self.maxhp
-        pygame.draw.rect(win,(255,0,0),(self.hitbox[0] - self.hitboxr, self.hitbox[1] - (self.hitboxr+30),100,20))
-        pygame.draw.rect(win,(0,255,0),(self.hitbox[0] - self.hitboxr, self.hitbox[1] - (self.hitboxr+30),int(hppercent*100),20))
-        pygame.draw.rect(win,(0,0,0),(self.hitbox[0] - self.hitboxr, self.hitbox[1] - (self.hitboxr+30),100,20),2)
-    
+        if self.Type != red:
+            pygame.draw.rect(win,(255,0,0),(self.hitbox[0] - self.hitboxr, self.hitbox[1] - (self.hitboxr+30),100,20))
+            pygame.draw.rect(win,(0,255,0),(self.hitbox[0] - self.hitboxr, self.hitbox[1] - (self.hitboxr+30),round(hppercent*100),20))
+            pygame.draw.rect(win,(0,0,0),(self.hitbox[0] - self.hitboxr, self.hitbox[1] - (self.hitboxr+30),100,20),2)
+        else:
+            pygame.draw.rect(win,(255,0,0),(self.hitbox[0]+7 - self.hitboxr, self.hitbox[1] - (self.hitboxr+30),50,10))
+            pygame.draw.rect(win,(0,255,0),(self.hitbox[0]+7 - self.hitboxr, self.hitbox[1] - (self.hitboxr+30),round(hppercent*50),10))
+            pygame.draw.rect(win,(0,0,0),(self.hitbox[0]+7 - self.hitboxr, self.hitbox[1] - (self.hitboxr+30),50,10),1)
+
+    def writeStuntext(self, stuntext):
+        if self.Type != red:
+            win.blit(stuntext,(self.hitbox[0] - self.hitboxr,self.hitbox[1] - (self.hitboxr+30) - 20))
+        else:
+            win.blit(stuntext,(self.hitbox[0]+7 - self.hitboxr,self.hitbox[1] - (self.hitboxr+30) - 20))
+
     def moveUp(self):
         if self.y  > 0:
             self.y -= self.vel
@@ -175,10 +195,10 @@ class player():
             self.right = True
         self.hitbox = (self.x+self.r + 3, self.y + self.r+3)
     
-    def shoot(self,listToAppendTo, radius,dmg, color = (255,0,0) ):
+    def shoot(self,listToAppendTo, radius,dmg, color = (255,0,0),stunduration = 20, velp = 15,stun = False):
         """listToAppendTo, radius, dmg"""
         if len(listToAppendTo) < 100:
-            listToAppendTo.append(projectile(round(self.x + self.r),round(self.y + self.r),radius,color,self.lastMove,dmg,self))
+            listToAppendTo.append(projectile(round(self.x + self.r),round(self.y + self.r),radius,color,self.lastMove,dmg,self,stunDuration = stunduration,vel = velp, isStun = stun))
     
     def die(self, listToRemoveFrom):
         listToRemoveFrom.pop(listToRemoveFrom.index(self))
@@ -230,19 +250,27 @@ class player():
     def loseHp(self, value):
         self.hp -= value
 
+    def getUnStunned(self):
+        self.isStunned = False
+
+    def getStunned(self):
+        self.isStunned = True
 #########################################################################################################################################################################
 #class projectile
 #########################################################################################################################################################################
 class projectile():
-    def __init__(self,x,y,r,color,facing, dmg, shooter):
+    """ self,x,y,r,color,facing, dmg, shooter, stun = False, vel = 15 """
+    def __init__(self,x,y,r,color,facing, dmg, shooter, isStun = False, vel = 15, stunDuration = 20):
         self.x = x
         self.y = y
         self.r = r
         self.color = color
-        self.vel = 15
+        self.vel = vel
         self.facing = facing
         self.dmg = dmg
         self.shooter = shooter
+        self.isStun = isStun
+        self.stunDuration = stunDuration
     
     def draw(self,win):
         pygame.draw.circle(win, self.color, (self.x, self.y), self.r)
@@ -308,27 +336,31 @@ class projectile():
 #########################################################################################################################################################################
 # függvények
 #########################################################################################################################################################################
-def respawn(character, charlist, vel, hp):
+def respawn(character, charlist, vel, hp, charType):
     """respawns the object specified by the character argument"""
     randomx = random.randint(0,win_width)
     randomy = random.randint(0,win_height)
-    character = player(randomx,randomy,40,vel,hp)
+    character = player(randomx,randomy,40,hp,charType,vel)
     while isInObj(randomx, randomy, char):
         randomx = random.randint(0,win_width)
         randomy = random.randint(0,win_height)
-        character = player(randomx,randomy,40,vel,hp)
+        character = player(randomx,randomy,40,hp,charType,vel)
     charlist.append(character)
 
 def redrawGameWindow():
     text = font.render("Kills: " + str(score), 1, (255,255,255))
+    stuntext = stunfont.render("STUNNED", 1, (255,255,255))
     win.blit(hatter,(0,0))
     win.blit(text,(1100,10))
     for bullet in bullets:
         bullet.draw(win)
-    char.draw(win,green)
+    char.draw(win)
     for enemy in enemies:
-        enemy.draw(win, red)
+        enemy.draw(win)
         enemy.drawHpBar()
+        if enemy.isStunned:
+            enemy.writeStuntext(stuntext)
+            
     char.drawHpBar()
     pygame.display.update()
 
@@ -349,8 +381,8 @@ def isInObj(randomx,randomy,whereNotToSpawn):
 # game init
 #########################################################################################################################################################################
 run = True
-char = player(300,300,50,maxhp = 10,vel = 8,isEnemy = False)
-enemy = player(50,50,40,maxhp = 100,vel = 2)
+char = player(300,300,50,Type = green,maxhp = 10, vel = 8)
+enemy = player(50,50,40,Type = red,maxhp = 10,vel = 2)
 enemies = []
 bullets = []
 enemies.append(enemy)
@@ -358,6 +390,9 @@ enemycount = 0
 bulletcount = 0
 shootcd = 0
 fps = 40
+score = 0
+collisiondmg = 1
+stuncd = 0
 
 #########################################################################################################################################################################
 # main loop
@@ -371,16 +406,16 @@ while run:
         if event.type == pygame.MOUSEBUTTONDOWN:
             bulletcount += 1
             if bulletcount%5 == 0:
-                char.shoot(bullets, 10, 5)
+                char.shoot(bullets, 10, 5,stun = True)
             else:
                 char.shoot(bullets,5, 3)
         elif event.type == pygame.KEYDOWN:
             if event.key == pygame.K_x:
-                char.shoot(bullets,100,500)
+                char.shoot(bullets,100,500,velp = 30,)
             if event.key == pygame.K_SPACE:
                 bulletcount += 1
                 if bulletcount%5 == 0:
-                    char.shoot(bullets,10,5)
+                    char.shoot(bullets,10,5,stun = True)
                 else:
                     char.shoot(bullets,6,3)
     for bullet in bullets:
@@ -389,9 +424,17 @@ while run:
         for enemy in enemies:
             if bullet.shooter == char:
                 if bullet.collide(enemy) and enemycount == 0:
-                    bullets.pop(bullets.index(bullet))
-                    enemy.loseHp(bullet.dmg)
-                    enemycount += 1
+                    if bullet.isStun:
+                        bullets.pop(bullets.index(bullet))
+                        enemy.loseHp(bullet.dmg)
+                        enemy.getStunned()
+                        stunduration = bullet.stunDuration
+                        stuncd = 0
+                        enemycount += 1
+                    else:
+                        bullets.pop(bullets.index(bullet))
+                        enemy.loseHp(bullet.dmg)
+                        enemycount += 1
             elif bullet.shooter == enemy:
                 if bullet.collide(char) and enemycount == 0:
                     bullets.pop(bullets.index(bullet))
@@ -434,10 +477,18 @@ while run:
     ###   mozgások vége   ################################################################################################
 
     for enemy in enemies:
-        enemy.moveTowardsTarget(char)
-        shootcd += 1
-        if shootcd%(fps*2) == 0:
-            enemy.shoot(bullets,5,1, (0,0,0))
+        if not enemy.isStunned:
+            enemy.moveTowardsTarget(char)
+            shootcd += 1
+            if shootcd%(fps*2) == 0:
+                enemy.shoot(bullets,5,1, (0,0,0))
+        
+        else:
+            stuncd += 1
+            if stuncd >= stunduration:
+                enemy.getUnStunned()
+                stuncd = 0
+            
         if enemy.collideWith(char):
             enemy.bounceBack(30,enemy.lastMove)
             if char.lastMove == "left" and enemy.lastMove == "right":
@@ -456,13 +507,20 @@ while run:
                 char.bounceBack(20,"upright")
             if char.lastMove == "upleft" and enemy.lastMove == "downright":
                 char.bounceBack(20,"upleft")
-            char.loseHp(1)
+            char.loseHp(collisiondmg)
+            enemy.loseHp(collisiondmg)
+    
     for enemy in enemies:
         if enemy.hp < 1:
             enemy.die(enemies)
             score += 1
+    
     if len(enemies) < 1:
-        respawn(enemy,enemies,10,2)
+        if score == 1:
+            respawn(enemy,enemies,3,250,red)
+        else:
+            respawn(enemy,enemies,2,10,red)
+
     if char.hp < 1:
         del char
         print("Meghaltál!")
