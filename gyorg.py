@@ -24,7 +24,9 @@ balfel = pygame.image.load("bal_fel.png")
 jobbfel = pygame.image.load("jobb_fel.png")
 jobble = pygame.image.load("jobb_le.png")
 balle = pygame.image.load("bal_le.png")
-hatter = pygame.image.load('bg_2.png')
+fullbg = pygame.image.load("bg_extended.png")
+background = [fullbg, 0,0]
+bg_right = pygame.image.load('bg_2.png')
 green = [walkLeft,walkRight,walkUp,walkDown,jobbfel,jobble,balfel,balle]
 red = [pygame.image.load('badguy_left.png'),pygame.image.load('badguy_right.png'),\
     pygame.image.load('badguy_up.png'),pygame.image.load('badguy_down.png'),\
@@ -36,6 +38,8 @@ blue = [pygame.image.load('blue_left.png'),pygame.image.load('blue_right.png'),\
     pygame.image.load('blue_upleft.png'),pygame.image.load('blue_downleft.png')]
 stun_bullet_icon = pygame.image.load("stun_bullet_icon2.png")
 stun_bullet_icon_grey = pygame.image.load("stun_bullet_icon2_grey.png")
+big_bullet_icon = pygame.image.load("big_bullet_icon.png")
+big_bullet_icon_grey = pygame.image.load("big_bullet_grey_icon.png")
 clock = pygame.time.Clock()
 font = pygame.font.SysFont('arial', 30, True)
 healpic = pygame.image.load('heal.png')
@@ -64,8 +68,13 @@ class player():
         self.terretory = 350
         self.maxterretory = 1000
         self.shootcd = 0
+        self.maxstuncd = 5
         self.stuncd = 0
+        self.stundmg = 40
         self.bigbulletCd = 0
+        self.dmg = 10
+        self.maxbigbulletcd = 20
+        self.bigbulletdmg = 1000
     def drawHitbox(self):
         if self.Type == red:
             self.hitbox = (self.x+self.r , self.y + self.r)
@@ -175,25 +184,25 @@ class player():
             self.y -= self.vel
             self.up = True
             self.down = False
-        self.hitbox = (self.x+self.r + 3, self.y + self.r+3)
+        self.setHitbox()
     def moveDown(self):
         if self.y  < win_height - 2*self.r:   
             self.y += self.vel
             self.down = True
             self.up = False
-        self.hitbox = (self.x+self.r + 3, self.y + self.r+3)
+        self.setHitbox()
     def moveLeft(self):
-        if self.x  > 0:
-            self.x -= self.vel
-            self.left = True
-            self.right = False
-        self.hitbox = (self.x+self.r + 3, self.y + self.r+3)
+        #if self.x  >= -self.r:
+        self.x -= self.vel
+        self.left = True
+        self.right = False
+        self.setHitbox()
     def moveRight(self):
-        if self.x  < win_width - 2*self.r:
-            self.x += self.vel
-            self.left = False
-            self.right = True
-        self.hitbox = (self.x+self.r + 3, self.y + self.r+3)
+        #if self.x  < win_width - self.r:
+        self.x += self.vel
+        self.left = False
+        self.right = True
+        self.setHitbox()
     def shoot(self,listToAppendTo, radius,dmg, bulletclass, color = (255,0,0),stunduration = 20, velp = 15,stun = False):
         """listToAppendTo, radius, dmg"""
         if len(listToAppendTo) < 100:
@@ -262,14 +271,24 @@ class player():
         self.shootcd += 1
     def shootCdReset(self):
         self.shootcd = 0
-    def setStunCd(self,cd ):
-        self.stuncd = cd
+    def setStunCd(self):
+        self.stuncd = self.maxstuncd*fps
     def redudeStunCd(self):
         self.stuncd -= 1
     def reduceBigbulletCd(self):
         self.bigbulletCd -= 1
-    def setBigBulletCd(self, cd):
-        self.bigbulletCd = cd
+    def setBigBulletCd(self):
+        self.bigbulletCd = self.maxbigbulletcd*fps
+    def sety(self, y):
+        self.y = y
+    def setx(self, x ):
+        self.x = x
+    def setHitbox(self):
+        self.hitbox = (self.x+self.r + 4, self.y + self.r+5)
+    def upgradeStun(self, ratio):
+        self.stundmg = int(self.stundmg * ratio)
+    def upgradeBigBullet(self, ratio):
+        self.bigbulletdmg = int(self.bigbulletdmg*ratio)
 #########################################################################################################################################################################
 #class projectile
 #########################################################################################################################################################################
@@ -286,17 +305,9 @@ class projectile():
         self.shooter = shooter
         self.isStun = isStun
         self.stunDuration = stunDuration
-        #self.stuncd = 10
-        self.isShot = False
+        self.isShot = False 
 
-    # class stunBullet():
-    #     def __init__(self, duration, cooldown,):
-    #         self.duration = duration
-    #         self.cooldown = cooldown
 
-    #     def collide(self,target):
-    #         distance = math.hypot(self.x - target.hitbox[0],self.y - target.hitbox[1])
-    #         return distance <= self.r + target.hitboxr 
     def draw(self,win):
         pygame.draw.circle(win, self.color, (self.x, self.y), self.r)
 
@@ -388,7 +399,6 @@ def respawn(character, charlist, vel, hp, charType):
         randomy = random.randint(0,win_height)
     character = player(randomx,randomy,40,hp,charType,vel)
     charlist.append(character)
-
 def spawnHeal(amount, listToAppendTo):
     randomx = random.randint(0,win_width)
     randomy = random.randint(0,win_height)
@@ -398,11 +408,11 @@ def spawnHeal(amount, listToAppendTo):
         randomy = random.randint(0,win_height)
     heal = Heal(randomx,randomy,amount)
     listToAppendTo.append(heal)
-
 def redrawGameWindow():
     text = font.render("Kills: " + str(score), 1, (255,255,255))
-    counter = font.render(str(round(char.stuncd/fps)), 1, (255,0,0))
-    win.blit(hatter,(0,0))
+    stuncounter = font.render(str(round(char.stuncd/fps)), 1, (255,0,0))
+    bigbulletcounter = font.render(str(round(char.bigbulletCd/fps)), 1, (255,0,0))
+    win.blit(background[0],(background[1], background[2]))
     for heal in heals:
         heal.draw()
     win.blit(text,(win_width - 180,10))
@@ -414,8 +424,10 @@ def redrawGameWindow():
         enemy.drawHpBar()
         if enemy.isStunned:
             enemy.writeStuntext()
+        #enemy.drawHitbox()
             
     char.drawHpBar()
+    #char.drawHitbox()
     if not char.isStunned:
         char.writeName()
     else:
@@ -425,31 +437,42 @@ def redrawGameWindow():
     else:
         win.blit(stun_bullet_icon_grey,(win_width - 150,win_height - 100))
         if len(str(round(char.stuncd/fps))) == 1:
-            win.blit(counter,(win_width - 121,win_height - 80))
+            win.blit(stuncounter,(win_width - 121,win_height - 80))
         else:
-            win.blit(counter,(win_width - 130,win_height - 80))
-    pygame.display.update()
+            win.blit(stuncounter,(win_width - 130,win_height - 80))
 
+    if char.bigbulletCd == 0:
+        win.blit(big_bullet_icon,(win_width - 250,win_height - 100))
+    else:
+        win.blit(big_bullet_icon_grey,(win_width - 250,win_height - 100))
+        if len(str(round(char.bigbulletCd/fps))) == 1:
+            win.blit(bigbulletcounter,(win_width - 221,win_height - 80))
+        else:
+            win.blit(bigbulletcounter,(win_width - 230,win_height - 80))
+    
+    pygame.display.update()
 def keyPressed(inputKey):
     keysPressed = pygame.key.get_pressed()
     if keysPressed[inputKey]:
         return True
     else:
         return False
-
 def isInObj(randomx,randomy,whereNotToSpawn):
     if randomx > whereNotToSpawn.x + whereNotToSpawn.r*2+100 or randomy > whereNotToSpawn.y + whereNotToSpawn.r*2+100 or randomx < whereNotToSpawn.x-100 or randomy < whereNotToSpawn.y-100:
         return False
     else:
         return True
-
+def changeBg(xvalue,yvalue):
+    background[1] += xvalue
+    background[2] += yvalue
+    return background
 #########################################################################################################################################################################
 # game init
 #########################################################################################################################################################################
 run = True
-char = player(500,500,50,name = "Ğěłľëřť Pęßťhý",Type = green,maxhp = 10, vel = 8)
-enemy = player(50,50,40,Type = red,maxhp = 10,vel = 2)
-enemy2 = player(100,50,40,Type = red,maxhp = 10,vel = 2)
+char = player(1150,500,50,name = "Ğěłľëřť Pęßťhý",Type = green,maxhp = 100, vel = 8)
+enemy = player(50,50,40,Type = red,maxhp = 100,vel = 2)
+enemy2 = player(100,50,40,Type = red,maxhp = 100,vel = 2)
 
 enemies = []
 bullets = []
@@ -459,11 +482,9 @@ enemies.append(enemy2)
 enemycount = 0
 fps = 40
 score = 0
-collisiondmg = 1
+collisiondmg = 5
 stundur = 0
 healcd = 0
-stuncd = 5
-bigbulletcd = 20
 #########################################################################################################################################################################
 # main loop
 #########################################################################################################################################################################
@@ -481,21 +502,20 @@ while run:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 run = False
-            # if event.type == pygame.MOUSEBUTTONDOWN:
-            #     if bulletcount%5 == 0:
-            #         char.shoot(bullets, 10, 5,stun = True)
-            #     else:
-            #         char.shoot(bullets,5, 3)
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                char.upgradeStun(1.5)
+                char.upgradeBigBullet(1.5)
+                print(char.stundmg)
+                print(char.bigbulletdmg)
             elif event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_g and char.bigbulletCd == 0:
-                    char.shoot(bullets,100,500,velp = 30,bulletclass = projectile)
-                    char.setBigBulletCd(bigbulletcd*fps)
+                    char.shoot(bullets,100,char.bigbulletdmg,velp = 30,bulletclass = projectile)
+                    char.setBigBulletCd()
                 if event.key == pygame.K_SPACE:
-                    char.shoot(bullets,6,3,bulletclass = projectile)
+                    char.shoot(bullets,6,char.dmg,bulletclass = projectile)
                 if event.key == pygame.K_f and char.stuncd == 0:
-                    char.shoot(bullets,10,5,color = (255,0,0),bulletclass = projectile, stun = True)
-                    print(bullets)
-                    char.setStunCd(stuncd*fps)
+                    char.shoot(bullets,10,char.stundmg,color = (255,0,0),bulletclass = projectile, stun = True)
+                    char.setStunCd()
         
         for bullet in bullets:
             bullet.move(bullets)
@@ -524,35 +544,45 @@ while run:
                 char.moveUp()
             elif keyPressed(pygame.K_DOWN) or keyPressed(pygame.K_s):
                 char.moveDown()
-
         elif (keyPressed(pygame.K_d) or keyPressed(pygame.K_RIGHT)) and not char.collideWith(enemy):
             char.moveRight()
             if keyPressed(pygame.K_UP) or keyPressed(pygame.K_w):
                 char.moveUp()
             elif keyPressed(pygame.K_DOWN) or keyPressed(pygame.K_s):
                 char.moveDown()
-
         elif (keyPressed(pygame.K_w) or keyPressed(pygame.K_UP)) and not char.collideWith(enemy):
             char.moveUp()
             if keyPressed(pygame.K_LEFT) or keyPressed(pygame.K_a):
                 char.moveLeft()
             elif keyPressed(pygame.K_RIGHT) or keyPressed(pygame.K_d):
                 char.moveRight()
-
         elif (keyPressed(pygame.K_s) or keyPressed(pygame.K_DOWN)) and not char.collideWith(enemy):
             char.moveDown()
             if keyPressed(pygame.K_LEFT) or keyPressed(pygame.K_a):
                 char.moveLeft()
             elif keyPressed(pygame.K_RIGHT) or keyPressed(pygame.K_d):
                 char.moveRight()
-
         else:
             left = False
             right = False
             down = False
             up = False
-        
     ###   mozgások vége   ################################################################################################
+    if char.x > win_width - char.r:
+        background = changeBg(-win_width,0)
+        char.setx(-char.r)
+        for enemy in enemies:
+            enemy.setx(enemy.x - win_width)
+            enemy.setHitbox()
+        char.setHitbox()
+    elif char.x < -char.r:
+        background = changeBg(win_width,0)
+        char.setx(win_width - char.r)
+        for enemy in enemies:
+            enemy.setx(enemy.x + win_width)
+            enemy.setHitbox()
+        char.setHitbox()
+
     for heal in heals:
         if char.collideWith(heal):
             char.getHp(heal.amount)
@@ -600,9 +630,9 @@ while run:
     
     if len(enemies) < 2:
         if score == 1:
-            respawn(enemy,enemies,3,250,red)
+            respawn(enemy,enemies,3,2500,red)
         else:
-            respawn(enemy,enemies,2,10,red)
+            respawn(enemy,enemies,2,100,red)
         
     if char.hp < 1:
         del char
