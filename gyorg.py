@@ -65,16 +65,19 @@ class player():
         self.hitboxr = self.r
         self.isStunned = False
         self.name = name
+        self.level = 1
         self.terretory = 350
         self.maxterretory = 1000
         self.shootcd = 0
         self.maxstuncd = 5
         self.stuncd = 0
-        self.stundmg = 40
+        self.stundmg = round(40*1.2**self.level)
         self.bigbulletCd = 0
-        self.dmg = 10
+        self.dmg = round(10*1.2**self.level)
         self.maxbigbulletcd = 20
-        self.bigbulletdmg = 1000
+        self.bigbulletdmg = round(1000*1.2**self.level)
+        self.xp = 0
+        self.xpForNextLevel = round(10 + 5**self.level - 3**self.level)
     def drawHitbox(self):
         if self.Type == red:
             self.hitbox = (self.x+self.r , self.y + self.r)
@@ -203,7 +206,7 @@ class player():
         self.left = False
         self.right = True
         self.setHitbox()
-    def shoot(self,listToAppendTo, radius,dmg, bulletclass, color = (255,0,0),stunduration = 20, velp = 15,stun = False):
+    def shoot(self,listToAppendTo, radius,dmg, bulletclass, color = (255,0,0),stunduration = 20, velp = 25,stun = False):
         """listToAppendTo, radius, dmg"""
         if len(listToAppendTo) < 100:
             listToAppendTo.append(bulletclass(round(self.x + self.r),round(self.y + self.r),radius,color,self.lastMove,dmg,self,stunDuration = stunduration,vel = velp, isStun = stun))
@@ -285,10 +288,19 @@ class player():
         self.x = x
     def setHitbox(self):
         self.hitbox = (self.x+self.r + 4, self.y + self.r+5)
-    def upgradeStun(self, ratio):
-        self.stundmg = int(self.stundmg * ratio)
+    def upgradeStun(self, dmgratio):#, cdratio):
+        self.stundmg = round(40*dmgratio**self.level)
+        #self.maxstuncd = round(self.maxstuncd/cdratio)
     def upgradeBigBullet(self, ratio):
-        self.bigbulletdmg = int(self.bigbulletdmg*ratio)
+        self.bigbulletdmg = round(1000*ratio**self.level)
+    def addXp(self,amount):
+        self.xp += amount
+    def resetXp(self):
+        self.xp = self.xp - self.xpForNextLevel
+    def addLevel(self):
+        self.level += 1
+    def setxpForNextLevel(self):
+        self.xpForNextLevel = round(10 + 5**self.level - 3**self.level)
 #########################################################################################################################################################################
 #class projectile
 #########################################################################################################################################################################
@@ -412,6 +424,9 @@ def redrawGameWindow():
     text = font.render("Kills: " + str(score), 1, (255,255,255))
     stuncounter = font.render(str(round(char.stuncd/fps)), 1, (255,0,0))
     bigbulletcounter = font.render(str(round(char.bigbulletCd/fps)), 1, (255,0,0))
+    letterf = font.render("F",1,(255,255,255))
+    letterg = font.render("G",1,(255,255,255))
+    leveltext = font.render("Level: "+str(char.level),1,(0,0,0))
     win.blit(background[0],(background[1], background[2]))
     for heal in heals:
         heal.draw()
@@ -433,23 +448,27 @@ def redrawGameWindow():
     else:
         char.writeStuntext()
     if char.stuncd == 0:
-        win.blit(stun_bullet_icon,(win_width - 150,win_height - 100))
+        win.blit(stun_bullet_icon,(win_width - 250,win_height - 100))
     else:
-        win.blit(stun_bullet_icon_grey,(win_width - 150,win_height - 100))
+        win.blit(stun_bullet_icon_grey,(win_width - 250,win_height - 100))
         if len(str(round(char.stuncd/fps))) == 1:
-            win.blit(stuncounter,(win_width - 121,win_height - 80))
+            win.blit(stuncounter,(win_width - 221,win_height - 80))
         else:
-            win.blit(stuncounter,(win_width - 130,win_height - 80))
+            win.blit(stuncounter,(win_width - 230,win_height - 80))
 
     if char.bigbulletCd == 0:
-        win.blit(big_bullet_icon,(win_width - 250,win_height - 100))
+        win.blit(big_bullet_icon,(win_width - 150,win_height - 100))
     else:
-        win.blit(big_bullet_icon_grey,(win_width - 250,win_height - 100))
+        win.blit(big_bullet_icon_grey,(win_width - 150,win_height - 100))
         if len(str(round(char.bigbulletCd/fps))) == 1:
-            win.blit(bigbulletcounter,(win_width - 221,win_height - 80))
+            win.blit(bigbulletcounter,(win_width - 121,win_height - 80))
         else:
-            win.blit(bigbulletcounter,(win_width - 230,win_height - 80))
-    
+            win.blit(bigbulletcounter,(win_width - 130,win_height - 80))
+    win.blit(letterf,(win_width - 220,win_height - 130))
+    win.blit(letterg,(win_width - 125,win_height - 130))
+    pygame.draw.rect(win,(255,255,255),(win_width - int(win_width/2) - 200,5,320,45))
+    pygame.draw.rect(win,(255,211,0),(win_width - int(win_width/2) - 195,10,round(310*char.xp/char.xpForNextLevel),35))
+    win.blit(leveltext,(win_width - int(win_width/2) - 100,10))
     pygame.display.update()
 def keyPressed(inputKey):
     keysPressed = pygame.key.get_pressed()
@@ -502,14 +521,11 @@ while run:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 run = False
-            if event.type == pygame.MOUSEBUTTONDOWN:
-                char.upgradeStun(1.5)
-                char.upgradeBigBullet(1.5)
-                print(char.stundmg)
-                print(char.bigbulletdmg)
+            #if event.type == pygame.MOUSEBUTTONDOWN:
+
             elif event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_g and char.bigbulletCd == 0:
-                    char.shoot(bullets,100,char.bigbulletdmg,velp = 30,bulletclass = projectile)
+                    char.shoot(bullets,100,char.bigbulletdmg,velp = 40,bulletclass = projectile)
                     char.setBigBulletCd()
                 if event.key == pygame.K_SPACE:
                     char.shoot(bullets,6,char.dmg,bulletclass = projectile)
@@ -627,7 +643,19 @@ while run:
         if enemy.hp < 1:
             enemy.die(enemies)
             score += 1
-    
+            char.addXp(5)
+            print(char.xp)
+
+    if char.xp >= char.xpForNextLevel:
+        char.addLevel()
+        char.resetXp()
+        char.setxpForNextLevel()
+        char.upgradeStun(1.2)
+        char.upgradeBigBullet(1.2)
+        print("level:",char.level)
+        print("szukseges xp:",char.xpForNextLevel)
+        print("stun dmg:", char.stundmg)
+        print("bug bullet dmg:", char.bigbulletdmg)
     if len(enemies) < 2:
         if score == 1:
             respawn(enemy,enemies,3,2500,red)
