@@ -26,7 +26,6 @@ jobble = pygame.image.load("jobb_le.png")
 balle = pygame.image.load("bal_le.png")
 fullbg = pygame.image.load("bg_extended.png")
 background = [fullbg, 0,0]
-bg_right = pygame.image.load('bg_2.png')
 green = [walkLeft,walkRight,walkUp,walkDown,jobbfel,jobble,balfel,balle]
 red = [pygame.image.load('badguy_left.png'),pygame.image.load('badguy_right.png'),\
     pygame.image.load('badguy_up.png'),pygame.image.load('badguy_down.png'),\
@@ -41,13 +40,14 @@ stun_bullet_icon_grey = pygame.image.load("stun_bullet_icon2_grey.png")
 big_bullet_icon = pygame.image.load("big_bullet_icon.png")
 big_bullet_icon_grey = pygame.image.load("big_bullet_grey_icon.png")
 clock = pygame.time.Clock()
+fps = 60
 font = pygame.font.SysFont('arial', 30, True)
 healpic = pygame.image.load('heal.png')
 #########################################################################################################################################################################
 #class player
 #########################################################################################################################################################################
 class player():
-    def __init__(self, x, y, r, maxhp, Type,name = "",vel = 2,):
+    def __init__(self, x, y, r, maxhp, Type, xpvalue = 5, name = "",vel = 2,atkSpeed = fps):
         self.x = x
         self.y = y
         self.r = r
@@ -74,10 +74,12 @@ class player():
         self.stundmg = round(40*1.2**self.level)
         self.bigbulletCd = 0
         self.dmg = round(10*1.2**self.level)
-        self.maxbigbulletcd = 20
+        self.maxbigbulletcd = 0
         self.bigbulletdmg = round(1000*1.2**self.level)
         self.xp = 0
         self.xpForNextLevel = round(10 + 5**self.level - 3**self.level)
+        self.xpvalue = xpvalue
+        self.atkSpeed = atkSpeed
     def drawHitbox(self):
         if self.Type == red:
             self.hitbox = (self.x+self.r , self.y + self.r)
@@ -289,10 +291,22 @@ class player():
     def setHitbox(self):
         self.hitbox = (self.x+self.r + 4, self.y + self.r+5)
     def upgradeStun(self, dmgratio):#, cdratio):
-        self.stundmg = round(40*dmgratio**self.level)
+        self.stundmg = round(self.stundmg*dmgratio)
         #self.maxstuncd = round(self.maxstuncd/cdratio)
     def upgradeBigBullet(self, ratio):
-        self.bigbulletdmg = round(1000*ratio**self.level)
+        self.bigbulletdmg = round(self.bigbulletdmg*ratio)
+    def upgradeDmg(self,ratio):
+        self.dmg = round(self.dmg*ratio)
+    def upgradeSpeed(self,ratio):
+        self.vel = round(self.vel*ratio)
+    def upgradeHp(self,ratio):
+        newHp = round(self.maxhp*ratio)
+        self.hp += (newHp - self.maxhp)
+        self.maxhp = newHp
+        print(self.hp)
+        print(self.maxhp)
+    def upgradeAtkSpeed(self,ratio):
+        self.atkSpeed = self.atkSpeed // ratio
     def addXp(self,amount):
         self.xp += amount
     def resetXp(self):
@@ -319,10 +333,12 @@ class projectile():
         self.stunDuration = stunDuration
         self.isShot = False 
 
-
+    def setHitbox(self):
+        pass
     def draw(self,win):
         pygame.draw.circle(win, self.color, (self.x, self.y), self.r)
-
+    def setx(self,x):
+        self.x = x
     def move(self, listToRemoveFrom):
         if self.facing == "left":
             if self.x < win_width and self.x > 0: 
@@ -398,18 +414,37 @@ class Heal():
         self.vel = -23
     def draw(self):
         win.blit(healpic,(self.x,self.y))
+    def setx(self,x):
+        self.x = x
+    def setHitbox(self):
+        pass
+#########################################################################################################################################################################
+# class Icon
+#########################################################################################################################################################################
+class Icon():
+    """ x is the value of its' x coordinate distance from the centre """
+    def __init__(self,x,image,typ):
+        self.x = round(win_width/2)-50+x
+        self.y = round(win_height/2)-50
+        self.image = image
+        self.typ = typ
+    def draw(self):
+        win.blit(self.image,(self.x,self.y))
+    def upgrade(self):
+        self.typ(1.2)
+
 #########################################################################################################################################################################
 # függvények
 #########################################################################################################################################################################
-def respawn(character, charlist, vel, hp, charType):
+def respawn(character, charlist, xpvalue, vel, hp, charType):
     """respawns the object specified by the character argument"""
     randomx = random.randint(0,win_width)
     randomy = random.randint(0,win_height)
-    character = player(randomx,randomy,40,hp,charType,vel)
+    character = player(randomx,randomy,40,hp,charType,vel = vel, xpvalue = xpvalue)
     while isInObj(randomx, randomy, char):
         randomx = random.randint(0,win_width)
         randomy = random.randint(0,win_height)
-    character = player(randomx,randomy,40,hp,charType,vel)
+    character = player(randomx,randomy,40,hp,charType,vel = vel,xpvalue = xpvalue)
     charlist.append(character)
 def spawnHeal(amount, listToAppendTo):
     randomx = random.randint(0,win_width)
@@ -430,7 +465,6 @@ def redrawGameWindow():
     win.blit(background[0],(background[1], background[2]))
     for heal in heals:
         heal.draw()
-    win.blit(text,(win_width - 180,10))
     for bullet in bullets:
         bullet.draw(win)
     char.draw(win)
@@ -469,6 +503,9 @@ def redrawGameWindow():
     pygame.draw.rect(win,(255,255,255),(win_width - int(win_width/2) - 200,5,320,45))
     pygame.draw.rect(win,(255,211,0),(win_width - int(win_width/2) - 195,10,round(310*char.xp/char.xpForNextLevel),35))
     win.blit(leveltext,(win_width - int(win_width/2) - 100,10))
+    win.blit(text,(win_width - 180,10))
+    for icon in icons:
+        icon.draw()
     pygame.display.update()
 def keyPressed(inputKey):
     keysPressed = pygame.key.get_pressed()
@@ -489,56 +526,82 @@ def changeBg(xvalue,yvalue):
 # game init
 #########################################################################################################################################################################
 run = True
-char = player(1150,500,50,name = "Ğěłľëřť Pęßťhý",Type = green,maxhp = 100, vel = 8)
-enemy = player(50,50,40,Type = red,maxhp = 100,vel = 2)
-enemy2 = player(100,50,40,Type = red,maxhp = 100,vel = 2)
-
+char = player(1150,500,50,name = "Ğěłľëřť Pęßťhý",Type = green,maxhp = 100, vel = 8, xpvalue = 5, atkSpeed = fps // 4)
+enemy = player(50,50,40,Type = red,maxhp = 100,)
+enemy2 = player(100,50,40,Type = red,maxhp = 100)
+upgrade_list = [[char.upgradeSpeed,pygame.image.load('speed_upgrade.png')],[char.upgradeDmg,pygame.image.load('dmg_upgrade.png')],[char.upgradeHp,pygame.image.load("hp_upgrade.png")],[char.upgradeAtkSpeed , pygame.image.load("atk_speed_upgrade.png")]]#,[char.upgradeStun], [char.upgradeBigBulletDmg]]
+icons = []
 enemies = []
 bullets = []
 heals = []
 enemies.append(enemy)
 enemies.append(enemy2)
 enemycount = 0
-fps = 40
 score = 0
 collisiondmg = 5
 stundur = 0
 healcd = 0
+isUpgrade = False
+
 #########################################################################################################################################################################
 # main loop
 #########################################################################################################################################################################
 while run:
     clock.tick(fps)
+    
+    objects = [[i for i in enemies],[i for i in bullets],[i for i in heals]]
+    if isUpgrade:
+        redrawGameWindow()
+        for event in pygame.event.get():
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_1:
+                    icons[0].upgrade()
+                    icons.clear()
+                    isUpgrade = False
+                elif event.key == pygame.K_2:
+                    icons[1].upgrade()
+                    icons.clear()
+                    isUpgrade = False
+                elif event.key == pygame.K_3:
+                    icons[2].upgrade()
+                    icons.clear()
+                    isUpgrade = False   
+        continue
+
     healcd += 1
     if healcd == fps*30:
         spawnHeal(10,heals)
         healcd = 0
+
     if char.stuncd > 0:
         char.redudeStunCd()
+
     if char.bigbulletCd > 0:
         char.reduceBigbulletCd()
+
     if not char.isStunned:
+        char.shootCdIncrease()
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 run = False
-            #if event.type == pygame.MOUSEBUTTONDOWN:
-
             elif event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_g and char.bigbulletCd == 0:
                     char.shoot(bullets,100,char.bigbulletdmg,velp = 40,bulletclass = projectile)
                     char.setBigBulletCd()
-                if event.key == pygame.K_SPACE:
-                    char.shoot(bullets,6,char.dmg,bulletclass = projectile)
+                # if event.key == pygame.K_SPACE:
+                #     char.shoot(bullets,6,char.dmg,bulletclass = projectile)
                 if event.key == pygame.K_f and char.stuncd == 0:
                     char.shoot(bullets,10,char.stundmg,color = (255,0,0),bulletclass = projectile, stun = True)
                     char.setStunCd()
-        
+        if pygame.key.get_pressed()[pygame.K_SPACE] and char.shootcd >= char.atkSpeed:
+            char.shoot(bullets,6,char.dmg,bulletclass = projectile)
+            char.shootCdReset()
         for bullet in bullets:
             bullet.move(bullets)
             enemycount = 0
             for enemy in enemies:
                 if bullet.shooter == char:
-                    if bullet.collide(enemy) and enemycount == 0:
+                    if bullet.collide(enemy) and bullet in bullets:
                         enemy.loseHp(bullet.dmg)
                         enemycount += 1
                         bullets.pop(bullets.index(bullet))
@@ -549,7 +612,7 @@ while run:
                             stundur = 0
                             
                 elif bullet.shooter == enemy:
-                    if bullet.collide(char) and enemycount == 0:
+                    if bullet.collide(char) and bullet in bullets:
                         bullets.pop(bullets.index(bullet))
                         char.loseHp(bullet.dmg)
 
@@ -578,25 +641,23 @@ while run:
                 char.moveLeft()
             elif keyPressed(pygame.K_RIGHT) or keyPressed(pygame.K_d):
                 char.moveRight()
-        else:
-            left = False
-            right = False
-            down = False
-            up = False
+
     ###   mozgások vége   ################################################################################################
     if char.x > win_width - char.r:
         background = changeBg(-win_width,0)
         char.setx(-char.r)
-        for enemy in enemies:
-            enemy.setx(enemy.x - win_width)
-            enemy.setHitbox()
+        for objlst  in objects:
+            for obj in objlst:
+                obj.setx(obj.x - win_width)
+                obj.setHitbox()
         char.setHitbox()
     elif char.x < -char.r:
         background = changeBg(win_width,0)
         char.setx(win_width - char.r)
-        for enemy in enemies:
-            enemy.setx(enemy.x + win_width)
-            enemy.setHitbox()
+        for objlist in objects:
+            for obj in objlist:
+                obj.setx(obj.x + win_width)
+                obj.setHitbox()
         char.setHitbox()
 
     for heal in heals:
@@ -609,7 +670,7 @@ while run:
                 enemy.expandTerretory()
                 enemy.moveTowardsTarget(char)
                 enemy.shootCdIncrease()
-                if enemy.shootcd == fps*2:
+                if enemy.shootcd == enemy.atkSpeed:
                     enemy.shoot(bullets,5,1, projectile,color = (0,0,0))
                     enemy.shootCdReset()
         else:
@@ -643,24 +704,28 @@ while run:
         if enemy.hp < 1:
             enemy.die(enemies)
             score += 1
-            char.addXp(5)
+            char.addXp(enemy.xpvalue)
             print(char.xp)
 
     if char.xp >= char.xpForNextLevel:
         char.addLevel()
         char.resetXp()
         char.setxpForNextLevel()
-        char.upgradeStun(1.2)
-        char.upgradeBigBullet(1.2)
+        x = -75
+        while len(icons)!= 3:
+            randomnum = random.randint(0,len(upgrade_list)-1)
+            icons.append(Icon(x,upgrade_list[randomnum][1],upgrade_list[randomnum][0]))
+            x += 150
+        isUpgrade = True
         print("level:",char.level)
         print("szukseges xp:",char.xpForNextLevel)
-        print("stun dmg:", char.stundmg)
-        print("bug bullet dmg:", char.bigbulletdmg)
+        print("dmg:", char.dmg)
+        print("speed:", char.vel)
     if len(enemies) < 2:
-        if score == 1:
-            respawn(enemy,enemies,3,2500,red)
+        if score == 20:
+            respawn(enemy,enemies,150,3,2500,red)
         else:
-            respawn(enemy,enemies,2,100,red)
+            respawn(enemy,enemies,5,2,100,red)
         
     if char.hp < 1:
         del char
