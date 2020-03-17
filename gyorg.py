@@ -47,7 +47,8 @@ healpic = pygame.image.load('heal.png')
 #class player
 #########################################################################################################################################################################
 class player():
-    def __init__(self, x, y, r, maxhp, Type, xpvalue = 5, name = "",vel = 2,atkSpeed = fps):
+    xpvalue = 5
+    def __init__(self, x, y, r, maxhp, Type, xpvalue = 5, name = "",vel = 2,atkSpeed = fps, dmg = 10 ):
         self.x = x
         self.y = y
         self.r = r
@@ -73,8 +74,11 @@ class player():
         self.stuncd = 0
         self.stundmg = round(40*1.2**self.level)
         self.bigbulletCd = 0
-        self.dmg = round(10*1.2**self.level)
-        self.maxbigbulletcd = 0
+        if Type == green:
+            self.dmg = round(10*1.2**self.level)
+        else:
+            self.dmg = dmg
+        self.maxbigbulletcd = 20
         self.bigbulletdmg = round(1000*1.2**self.level)
         self.xp = 0
         self.xpForNextLevel = round(10 + 5**self.level - 3**self.level)
@@ -315,12 +319,14 @@ class player():
         self.level += 1
     def setxpForNextLevel(self):
         self.xpForNextLevel = round(10 + 5**self.level - 3**self.level)
+    def summonMinion(self):
+        minions.append(player(self.x - self.hitboxr, self.y,20,30,green,vel = 4))
 #########################################################################################################################################################################
 #class projectile
 #########################################################################################################################################################################
 class projectile():
     """ self,x,y,r,color,facing, dmg, shooter, stun = False, vel = 15 """
-    def __init__(self,x,y,r,color,facing, dmg, shooter, isStun = False, vel = 15, stunDuration = 20):
+    def __init__(self,x,y,r,color,facing, dmg, shooter, isStun = False, vel = 15, stunDuration = fps//2):
         self.x = x
         self.y = y
         self.r = r
@@ -431,7 +437,7 @@ class Icon():
     def draw(self):
         win.blit(self.image,(self.x,self.y))
     def upgrade(self):
-        self.typ(1.2)
+        self.typ(1.5)
 
 #########################################################################################################################################################################
 # függvények
@@ -468,6 +474,9 @@ def redrawGameWindow():
     for bullet in bullets:
         bullet.draw(win)
     char.draw(win)
+    for minion in minions:
+        minion.draw(win)
+        minion.drawHpBar()
     for enemy in enemies:
         enemy.draw(win)
         enemy.drawHpBar()
@@ -531,6 +540,7 @@ enemy = player(50,50,40,Type = red,maxhp = 100,)
 enemy2 = player(100,50,40,Type = red,maxhp = 100)
 upgrade_list = [[char.upgradeSpeed,pygame.image.load('speed_upgrade.png')],[char.upgradeDmg,pygame.image.load('dmg_upgrade.png')],[char.upgradeHp,pygame.image.load("hp_upgrade.png")],[char.upgradeAtkSpeed , pygame.image.load("atk_speed_upgrade.png")]]#,[char.upgradeStun], [char.upgradeBigBulletDmg]]
 icons = []
+minions = []
 enemies = []
 bullets = []
 heals = []
@@ -565,9 +575,9 @@ while run:
                 elif event.key == pygame.K_3:
                     icons[2].upgrade()
                     icons.clear()
-                    isUpgrade = False   
-        continue
+                    isUpgrade = False
 
+        continue
     healcd += 1
     if healcd == fps*30:
         spawnHeal(10,heals)
@@ -588,11 +598,11 @@ while run:
                 if event.key == pygame.K_g and char.bigbulletCd == 0:
                     char.shoot(bullets,100,char.bigbulletdmg,velp = 40,bulletclass = projectile)
                     char.setBigBulletCd()
-                # if event.key == pygame.K_SPACE:
-                #     char.shoot(bullets,6,char.dmg,bulletclass = projectile)
                 if event.key == pygame.K_f and char.stuncd == 0:
-                    char.shoot(bullets,10,char.stundmg,color = (255,0,0),bulletclass = projectile, stun = True)
+                    char.shoot(bullets,10,char.stundmg,color = (255,0,0),bulletclass = projectile, stunduration = 20, stun = True)
                     char.setStunCd()
+            # elif event.type == pygame.MOUSEBUTTONDOWN:
+            #     char.addXp(char.xpForNextLevel)
         if pygame.key.get_pressed()[pygame.K_SPACE] and char.shootcd >= char.atkSpeed:
             char.shoot(bullets,6,char.dmg,bulletclass = projectile)
             char.shootCdReset()
@@ -608,6 +618,7 @@ while run:
                         enemy.expandTerretory((win_height+win_width)*2)
                         if bullet.isStun:
                             enemy.getStunned()
+                            print(bullet.stunDuration)
                             stunduration = bullet.stunDuration
                             stundur = 0
                             
@@ -616,7 +627,7 @@ while run:
                         bullets.pop(bullets.index(bullet))
                         char.loseHp(bullet.dmg)
 
-        ###   mozgások   #################################################################################################
+    ###   mozgások   #################################################################################################
         if (keyPressed(pygame.K_a) or keyPressed(pygame.K_LEFT)) and not char.collideWith(enemy):
             char.moveLeft()
             if keyPressed(pygame.K_UP) or keyPressed(pygame.K_w):
@@ -671,7 +682,7 @@ while run:
                 enemy.moveTowardsTarget(char)
                 enemy.shootCdIncrease()
                 if enemy.shootcd == enemy.atkSpeed:
-                    enemy.shoot(bullets,5,1, projectile,color = (0,0,0))
+                    enemy.shoot(bullets,5,10, projectile,color = (0,0,0))
                     enemy.shootCdReset()
         else:
             stundur += 1
